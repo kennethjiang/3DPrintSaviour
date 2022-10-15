@@ -20,7 +20,7 @@ while getopts "etdih" arg; do
         filename=$(basename -- "$video")
         filename="${filename%.*}"
         mkdir -p $DIR/$filename
-        ffmpeg -y -i $video  -qscale:v 2 -ss 00:00:01.958333333 -start_number 0 $DIR/$filename/frame%6d.jpg
+        ffmpeg -y -i $video  -qscale:v 2 -ss 00:00:01.958333333 -start_number 0 -vf fps=24 $DIR/$filename/frame%6d.jpg
       done
       ;;
     t) # Test mode - Logs output to log file, does not run print control, and loops through preexisting images.
