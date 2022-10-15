@@ -2,7 +2,7 @@
 # This script runs both Python scripts when a new file is created via lsyncd
 # Note that 'moved_to' is used due to the way rsync works
 
-BASE_DIR="/home/aaron/github/3DPrintSaviour" # base dir
+BASE_DIR="." # base dir
 DIR="$BASE_DIR/jpgs" # dir of images folder
 TIMELAPSE_DIR="$BASE_DIR/timelapses" # dir of timelapses folder
 PRINTCTRL="$BASE_DIR/printcontrol.py" # path to printcontrol.py
@@ -20,7 +20,7 @@ while getopts "etdih" arg; do
         filename=$(basename -- "$video")
         filename="${filename%.*}"
         mkdir -p $DIR/$filename
-        ffmpeg -y -i $video  -qscale:v 2 -ss 00:00:01.958333333 -start_number 0 -vf fps=24 $DIR/$filename/frame%6d.jpg
+        ffmpeg -y -i $video  -qscale:v 2 -ss 00:00:01.958333333 -start_number 0 $DIR/$filename/frame%6d.jpg
       done
       ;;
     t) # Test mode - Logs output to log file, does not run print control, and loops through preexisting images.

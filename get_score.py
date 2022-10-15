@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # import the necessary packages
 from skimage.metrics import normalized_root_mse as compare_nrmse
