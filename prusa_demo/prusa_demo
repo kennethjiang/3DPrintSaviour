@@ -86,14 +86,18 @@ if __name__ == '__main__':
         '-f', '--file', dest='file_path', required=True,
         help='Path to timelapse file'
     )
+    parser.add_argument(
+        '-w', '--width', dest='width', default=640,
+        help='Width'
+    )
+    parser.add_argument(
+        '-H', '--height', dest='height', default=360,
+        help='Height'
+    )
     args = parser.parse_args()
 
     # Create a VideoCapture object to read the video
     cap = cv2.VideoCapture(args.file_path)
-
-    # Get the frames per second (fps) and frame size of the video
-    fps = cap.get(cv2.CAP_PROP_FPS)
-    frame_size = (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)))
 
     prev_frame = None
     output_frames = []
@@ -108,6 +112,7 @@ if __name__ == '__main__':
         if not ret:
             break
 
+        frame = cv2.resize(frame, (args.width, args.height), interpolation= cv2.INTER_LINEAR)
         # Convert the current frame to grayscale
         gray_frame = to_grayscale(frame)
 
@@ -117,13 +122,13 @@ if __name__ == '__main__':
         # Subtract the current frame from the previous frame
         if prev_frame is not None:
             diff_frame = np.abs(gray_frame.astype(np.float64) - prev_frame.astype(np.float64))
-            diff_frame = cv2.cvtColor((8*diff_frame).astype(np.uint8), cv2.COLOR_GRAY2BGR)
+            diff_frame = cv2.cvtColor((4*diff_frame).astype(np.uint8), cv2.COLOR_GRAY2BGR)
 
             if args.compare:
                 _, diff_frame_with_sifts = search_shifts(np.stack([prev_frame, gray_frame]))
-                diff_frame_with_sifts = cv2.cvtColor((8*diff_frame_with_sifts).astype(np.uint8), cv2.COLOR_GRAY2BGR)
+                diff_frame_with_sifts = cv2.cvtColor((4*diff_frame_with_sifts).astype(np.uint8), cv2.COLOR_GRAY2BGR)
                 _, diff_frame_with_sifts_1 = search_shifts_1(np.stack([prev_frame, gray_frame]))
-                diff_frame_with_sifts_1 = cv2.cvtColor((8*diff_frame_with_sifts_1).astype(np.uint8), cv2.COLOR_GRAY2BGR)
+                diff_frame_with_sifts_1 = cv2.cvtColor((4*diff_frame_with_sifts_1).astype(np.uint8), cv2.COLOR_GRAY2BGR)
         else:
             diff_frame = np.zeros_like(frame)
             if args.compare:
