@@ -3,6 +3,37 @@ import numpy as np
 import time
 import sys
 
+#-------------------------------------------------------------------------------
+# A single shift-compensation script:
+def search_shifts(duo, warp_range = 2):
+    (heightCropped, widthCropped) = duo[0].shape  
+
+    duo[0,:warp_range] = 0
+    duo[0,:,:warp_range] = 0
+    duo[0,-warp_range:] = 0
+    duo[0,:,-warp_range:] = 0
+
+    # Eliminating possible false positives due to small camera movements:
+    warped_array = np.zeros(((warp_range*2+1)**2,heightCropped,widthCropped), dtype = np.float64)
+    warped_array_idx = 0
+    for idx_x,i in enumerate(range(-warp_range,warp_range+1)):
+      for idx_y,j in enumerate(range(-warp_range,warp_range+1)):
+          M = np.float32([[1,0,i],[0,1,j]])
+          warped = cv2.warpAffine(duo[1],M,(widthCropped,heightCropped))
+
+          warped[:warp_range] = 0
+          warped[:,:warp_range] = 0
+          warped[-warp_range:] = 0
+          warped[:,-warp_range:] = 0
+
+          warped_array[warped_array_idx] = (warped.astype(np.float64) - duo[0].astype(np.float64))**2
+          warped_array_idx += 1
+
+    warpedMinImg = np.amin(warped_array, axis = 0)
+    warpedMin = np.mean(warpedMinImg)
+
+    return warpedMin/(heightCropped*widthCropped),warpedMinImg
+
 # Define the path to the video file
 video_path = 'output_video.mp4'
 
@@ -17,9 +48,7 @@ frame_size = (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_F
 def to_grayscale(frame):
     # Convert the frame to grayscale
     gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    # Convert the grayscale frame back to RGB so we can display it
-    processed_frame = cv2.cvtColor(gray_frame, cv2.COLOR_GRAY2BGR)
-    return processed_frame
+    return gray_frame
 
 # Initialize the previous frame to None
 prev_frame = None
@@ -39,14 +68,19 @@ while cap.isOpened():
     gray_frame = to_grayscale(frame)
     # Subtract the current frame from the previous frame
     if prev_frame is not None:
-        diff_frame = cv2.subtract(gray_frame, prev_frame)
+        diff_frame = (gray_frame - prev_frame)**2
+        diff_frame = cv2.cvtColor(diff_frame, cv2.COLOR_GRAY2BGR)
+
+        diff, diff_frame_with_sifts = search_shifts(np.stack([prev_frame, gray_frame]))
+        diff_frame_with_sifts = cv2.cvtColor(diff_frame_with_sifts.astype(np.uint8), cv2.COLOR_GRAY2BGR)
     else:
         diff_frame = np.zeros_like(frame)
+        diff_frame_with_sifts = np.zeros_like(frame)
     prev_frame = gray_frame
 
     # Concatenate the original frame and the difference frame horizontally
     output_frame_1 = np.concatenate((frame, diff_frame), axis=1)
-    output_frame_2 = np.concatenate((np.zeros_like(frame), diff_frame), axis=1)
+    output_frame_2 = np.concatenate((np.zeros_like(frame), diff_frame_with_sifts), axis=1)
     output_frame = np.vstack((output_frame_1, output_frame_2))
     output_frames.append(output_frame)
 
