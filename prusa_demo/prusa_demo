@@ -45,7 +45,9 @@ while cap.isOpened():
     prev_frame = gray_frame
 
     # Concatenate the original frame and the difference frame horizontally
-    output_frame = np.vstack((frame, diff_frame))
+    output_frame_1 = np.concatenate((frame, diff_frame), axis=1)
+    output_frame_2 = np.concatenate((np.zeros_like(frame), diff_frame), axis=1)
+    output_frame = np.vstack((output_frame_1, output_frame_2))
     output_frames.append(output_frame)
 
     print(".", end="")
