@@ -26,7 +26,7 @@ def search_shifts(duo, warp_range = 2):
           warped[-warp_range:] = 0
           warped[:,-warp_range:] = 0
 
-          warped_array[warped_array_idx] = (warped.astype(np.float64) - duo[0].astype(np.float64))**2
+          warped_array[warped_array_idx] = np.abs(warped.astype(np.float64) - duo[0].astype(np.float64))
           warped_array_idx += 1
 
     warpedMinImg = np.amin(warped_array, axis = 0)
@@ -68,11 +68,11 @@ while cap.isOpened():
     gray_frame = to_grayscale(frame)
     # Subtract the current frame from the previous frame
     if prev_frame is not None:
-        diff_frame = (gray_frame - prev_frame)**2
-        diff_frame = cv2.cvtColor(diff_frame, cv2.COLOR_GRAY2BGR)
+        diff_frame = np.abs(gray_frame.astype(np.float64) - prev_frame.astype(np.float64))
+        diff_frame = cv2.cvtColor((8*diff_frame).astype(np.uint8), cv2.COLOR_GRAY2BGR)
 
         diff, diff_frame_with_sifts = search_shifts(np.stack([prev_frame, gray_frame]))
-        diff_frame_with_sifts = cv2.cvtColor(diff_frame_with_sifts.astype(np.uint8), cv2.COLOR_GRAY2BGR)
+        diff_frame_with_sifts = cv2.cvtColor((8*diff_frame_with_sifts).astype(np.uint8), cv2.COLOR_GRAY2BGR)
     else:
         diff_frame = np.zeros_like(frame)
         diff_frame_with_sifts = np.zeros_like(frame)
