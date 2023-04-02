@@ -20,11 +20,9 @@ def to_grayscale(frame):
     processed_frame = cv2.cvtColor(gray_frame, cv2.COLOR_GRAY2BGR)
     return processed_frame
 
-# Initialize the pause flag to False
-paused = False
-
 # Initialize the previous frame to None
 prev_frame = None
+output_frames = []
 
 # Loop through each frame in the video
 while cap.isOpened():
@@ -43,21 +41,29 @@ while cap.isOpened():
         diff_frame = np.zeros_like(frame)
     prev_frame = gray_frame
 
+    # Concatenate the original frame and the difference frame horizontally
+    output_frame = np.concatenate((frame, diff_frame), axis=1)
+    output_frames.append(output_frame)
+
+cv2.namedWindow('Video', cv2.WINDOW_NORMAL)
+
+# Initialize the current frame index
+frame_idx = 0
+while True:
+    output_frame = output_frames[frame_idx]
     # Display the processed frame
-    cv2.imshow('Video', diff_frame)
-    if paused:
-        cv2.waitKey()
-    else:
-        # Wait for 100ms between each frame, or until the user presses a key
-        key = cv2.waitKey(5)
+    cv2.imshow('Video', output_frame)
+
+    key = cv2.waitKey()
     # Check if the user pressed the 'q' key to exit
     if key & 0xFF == ord('q'):
         break
-
-    # Check if the user pressed the space key
-    if key == ord(' '):
-        # Toggle the pause flag
-        paused = not paused
+    # Check if the user pressed the right arrow key to advance 1 frame
+    elif key == 3: # right arrow key
+        frame_idx += 1
+    # Check if the user pressed the left arrow key to rewind 1 frame
+    elif key == 2: # left arrow key
+        frame_idx -= 1
 
 # Release the VideoCapture object and close the window
 cap.release()
