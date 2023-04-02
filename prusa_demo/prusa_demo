@@ -1,3 +1,4 @@
+import argparse
 import cv2
 import numpy as np
 import time
@@ -67,92 +68,107 @@ def search_shifts_1(duo, warp_range = 3):
     return warpedMin/(heightCropped*widthCropped),warped_array[min_mean_index]
 
 
-# Define the path to the video file
-video_path = 'output_video.mp4'
-
-# Create a VideoCapture object to read the video
-cap = cv2.VideoCapture(video_path)
-
-# Get the frames per second (fps) and frame size of the video
-fps = cap.get(cv2.CAP_PROP_FPS)
-frame_size = (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)))
-
 # Define a function to convert an RGB frame to grayscale
 def to_grayscale(frame):
     # Convert the frame to grayscale
     gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     return gray_frame
 
-# Initialize the previous frame to None
-prev_frame = None
-output_frames = []
 
-print("Loading video", end="")
-sys.stdout.flush()
-# Loop through each frame in the video
-while cap.isOpened():
-    # Read the frame from the video
-    ret, frame = cap.read()
-    # If we reached the end of the video, break the loop
-    if not ret:
-        break
+if __name__ == '__main__':
 
-    # Convert the current frame to grayscale
-    gray_frame = to_grayscale(frame)
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '-c', '--compare', dest='compare', default=False, action="store_true",
+        help='Show comparison'
+    )
+    parser.add_argument(
+        '-f', '--file', dest='file_path', required=True,
+        help='Path to timelapse file'
+    )
+    args = parser.parse_args()
 
-    frame_blur_kernel_size = 3
-    gray_frame = cv2.GaussianBlur(gray_frame,(frame_blur_kernel_size,frame_blur_kernel_size),0)
+    # Create a VideoCapture object to read the video
+    cap = cv2.VideoCapture(args.file_path)
 
-    # Subtract the current frame from the previous frame
-    if prev_frame is not None:
-        diff_frame = np.abs(gray_frame.astype(np.float64) - prev_frame.astype(np.float64))
-        diff_frame = cv2.cvtColor((8*diff_frame).astype(np.uint8), cv2.COLOR_GRAY2BGR)
+    # Get the frames per second (fps) and frame size of the video
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    frame_size = (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)))
 
-        _, diff_frame_with_sifts = search_shifts(np.stack([prev_frame, gray_frame]))
-        diff_frame_with_sifts = cv2.cvtColor((8*diff_frame_with_sifts).astype(np.uint8), cv2.COLOR_GRAY2BGR)
+    prev_frame = None
+    output_frames = []
 
-        _, diff_frame_with_sifts_1 = search_shifts_1(np.stack([prev_frame, gray_frame]))
-        diff_frame_with_sifts_1 = cv2.cvtColor((8*diff_frame_with_sifts_1).astype(np.uint8), cv2.COLOR_GRAY2BGR)
-    else:
-        diff_frame = np.zeros_like(frame)
-        diff_frame_with_sifts = np.zeros_like(frame)
-        diff_frame_with_sifts_1 = np.zeros_like(frame)
-    prev_frame = gray_frame
-
-    # Concatenate the original frame and the difference frame horizontally
-    output_frame_1 = np.concatenate((frame, diff_frame), axis=1)
-    output_frame_2 = np.concatenate((diff_frame_with_sifts_1, diff_frame_with_sifts), axis=1)
-    output_frame = np.vstack((output_frame_1, output_frame_2))
-    output_frames.append(output_frame)
-
-    print(".", end="")
+    print("Loading video", end="")
     sys.stdout.flush()
+    # Loop through each frame in the video
+    while cap.isOpened():
+        # Read the frame from the video
+        ret, frame = cap.read()
+        # If we reached the end of the video, break the loop
+        if not ret:
+            break
 
-print("done", end="")
-print("\r", end="")  # move cursor to the beginning of the line
+        # Convert the current frame to grayscale
+        gray_frame = to_grayscale(frame)
 
+        frame_blur_kernel_size = 3
+        gray_frame = cv2.GaussianBlur(gray_frame,(frame_blur_kernel_size,frame_blur_kernel_size),0)
 
-cv2.namedWindow('Video', cv2.WINDOW_NORMAL)
+        # Subtract the current frame from the previous frame
+        if prev_frame is not None:
+            diff_frame = np.abs(gray_frame.astype(np.float64) - prev_frame.astype(np.float64))
+            diff_frame = cv2.cvtColor((8*diff_frame).astype(np.uint8), cv2.COLOR_GRAY2BGR)
 
-# Initialize the current frame index
-frame_idx = 0
-while True:
-    output_frame = output_frames[frame_idx]
-    # Display the processed frame
-    cv2.imshow('Video', output_frame)
+            if args.compare:
+                _, diff_frame_with_sifts = search_shifts(np.stack([prev_frame, gray_frame]))
+                diff_frame_with_sifts = cv2.cvtColor((8*diff_frame_with_sifts).astype(np.uint8), cv2.COLOR_GRAY2BGR)
+                _, diff_frame_with_sifts_1 = search_shifts_1(np.stack([prev_frame, gray_frame]))
+                diff_frame_with_sifts_1 = cv2.cvtColor((8*diff_frame_with_sifts_1).astype(np.uint8), cv2.COLOR_GRAY2BGR)
+        else:
+            diff_frame = np.zeros_like(frame)
+            if args.compare:
+                diff_frame_with_sifts = np.zeros_like(frame)
+                diff_frame_with_sifts_1 = np.zeros_like(frame)
+        prev_frame = gray_frame
 
-    key = cv2.waitKey()
-    # Check if the user pressed the 'q' key to exit
-    if key & 0xFF == ord('q'):
-        break
-    # Check if the user pressed the right arrow key to advance 1 frame
-    elif key == 3: # right arrow key
-        frame_idx += 1
-    # Check if the user pressed the left arrow key to rewind 1 frame
-    elif key == 2: # left arrow key
-        frame_idx -= 1
+        # Concatenate the original frame and the difference frame horizontally
+        output_frame_1 = np.concatenate((frame, diff_frame), axis=1)
+        if args.compare:
+             output_frame_2 = np.concatenate((diff_frame_with_sifts_1, diff_frame_with_sifts), axis=1)
+             output_frame = np.vstack((output_frame_1, output_frame_2))
+        else:
+             output_frame = output_frame_1
 
-# Release the VideoCapture object and close the window
-cap.release()
-cv2.destroyAllWindows()
+        output_frames.append(output_frame)
 
+        print(".", end="")
+        sys.stdout.flush()
+
+    print("done", end="")
+    print("\r", end="")  # move cursor to the beginning of the line
+
+    cv2.namedWindow('Video', cv2.WINDOW_NORMAL)
+
+    # Initialize the current frame index
+    frame_idx = 0
+    while True:
+        output_frame = output_frames[frame_idx]
+        cv2.putText(output_frame, f'{frame_idx}', (36, 72), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 4, cv2.LINE_AA)
+
+        # Display the processed frame
+        cv2.imshow('Video', output_frame)
+
+        key = cv2.waitKey()
+        # Check if the user pressed the 'q' key to exit
+        if key & 0xFF == ord('q'):
+            break
+        # Check if the user pressed the right arrow key to advance 1 frame
+        elif key == 3: # right arrow key
+            frame_idx += 1
+        # Check if the user pressed the left arrow key to rewind 1 frame
+        elif key == 2: # left arrow key
+            frame_idx -= 1
+
+    # Release the VideoCapture object and close the window
+    cap.release()
+    cv2.destroyAllWindows()
