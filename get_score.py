@@ -45,6 +45,7 @@ thresA = cv2.threshold(diffA, threshold, 255, cv2.THRESH_BINARY)[1]
 diffB = cv2.absdiff(grayB, grayBG)
 thresB = cv2.threshold(diffB, threshold, 255, cv2.THRESH_BINARY)[1]
 
+import ipdb; ipdb.set_trace()
 # compute the Normalised Root Mean-Squared Error (NRMSE) between the two
 # images
 score = compare_nrmse(thresA, thresB)
