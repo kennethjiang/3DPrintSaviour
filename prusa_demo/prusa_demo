@@ -4,12 +4,14 @@ import numpy as np
 import time
 import sys
 
+
 #-------------------------------------------------------------------------------
 # A single shift-compensation script.
 # This is a strange algorithm as it takes the minimum of all shift situations on each pixel
-def search_shifts_absolute_min(duo, warp_range = 3):
+def search_shifts_absolute_min(duo, warp_range = 3, debug=False):
     (heightCropped, widthCropped) = duo[0].shape  
 
+    duo = duo.copy()
     duo[0,:warp_range] = 0
     duo[0,:,:warp_range] = 0
     duo[0,-warp_range:] = 0
@@ -34,7 +36,7 @@ def search_shifts_absolute_min(duo, warp_range = 3):
     warpedMinImg = np.amin(warped_array, axis = 0)
     warpedMin = np.mean(warpedMinImg)
 
-    return warpedMin/(heightCropped*widthCropped),warpedMinImg
+    return warpedMin,warpedMinImg
 
 
 #-------------------------------------------------------------------------------
@@ -42,6 +44,7 @@ def search_shifts_absolute_min(duo, warp_range = 3):
 def search_shifts(duo, warp_range = 3, debug=False):
     (heightCropped, widthCropped) = duo[0].shape  
 
+    duo = duo.copy()
     duo[0,:warp_range] = 0
     duo[0,:,:warp_range] = 0
     duo[0,-warp_range:] = 0
@@ -66,13 +69,23 @@ def search_shifts(duo, warp_range = 3, debug=False):
           warped_array_idx += 1
 
     diff_means = [np.mean(x) for x in warped_array]
-    min_mean_index = diff_means.index(min(diff_means))
+    warpedMin = min(diff_means)
+    min_mean_index = diff_means.index(warpedMin)
     if debug:
+      # print(f'diff_means: {diff_means}')
       print(f'M: {warped_offset_array[min_mean_index]}')
 
-    warpedMin = min(diff_means)
+    return warpedMin,warped_array[min_mean_index]
 
-    return warpedMin/(heightCropped*widthCropped),warped_array[min_mean_index]
+def naive_diff(duo, warp_range = 3, debug=False):
+  duo = duo.copy()
+  duo[:,:warp_range] = 0
+  duo[:,:,:warp_range] = 0
+  duo[:,-warp_range:] = 0
+  duo[:,:,-warp_range:] = 0
+
+  diff_img = np.abs(duo[1].astype(np.float64) - duo[0].astype(np.float64))
+  return np.mean(diff_img), diff_img
 
 
 # Define a function to convert an RGB frame to grayscale
@@ -140,7 +153,7 @@ if __name__ == '__main__':
 
         # Subtract the current frame from the previous frame
         if prev_frame is not None:
-            diff_frame = np.abs(gray_frame.astype(np.float64) - prev_frame.astype(np.float64))
+            _, diff_frame = naive_diff(np.stack([prev_frame, gray_frame]), debug=debug)
             diff_frame = cv2.cvtColor((4*diff_frame).astype(np.uint8), cv2.COLOR_GRAY2BGR)
 
             if args.compare:
